@@ -1,17 +1,32 @@
-import { View, Text, TouchableOpacity, FlatList } from "react-native";
+import { View, Text, TouchableOpacity, FlatList, Image } from "react-native";
 import React, { useEffect, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Header from "../components/Header";
 import { router } from "expo-router";
 import PieChart from "react-native-pie-chart";
+import supabase from "../utils/supabase";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const modulos = () => {
+  const [foto, setFoto] = useState("");
+  const [nombre, setNombre] = useState(null);
+  const [carrera, setCarrera] = useState(null);
+  const [tipoUsuario, setTipoUsuario] = useState(null);
+  const [estatus, setEstatus] = useState(null);
+
+  const [codigo, setCodigo] = useState(null);
+  const [nip, setNip] = useState(null);
+
   const [series, setSeries] = useState(null);
   const [creditos, setCreditos] = useState(0);
   const [creditosRequeridos, setCreditosRequeridos] = useState(0);
   const [materias, setMaterias] = useState(null);
 
   useEffect(() => {
+    supabase.auth
+      .getUser()
+      .then(({ data }) => setCodigo(data.user.user_metadata.codigo))
+      .catch((e) => console.log(e));
+
     fetch("http://cuceimobile.space/Escuela/kardex.php")
       .then((response) => response.json())
       .then((data) => {
@@ -21,14 +36,87 @@ const modulos = () => {
         setCreditosRequeridos(data.creditosRequeridos);
         setMaterias(data.materias);
       });
+
+    AsyncStorage.getItem("nip").then((data) => {
+      setNip(data);
+    });
   }, []);
+
+  useEffect(() => {
+    if (!codigo) return;
+    var fotoXhttp = new XMLHttpRequest();
+
+    fotoXhttp.onreadystatechange = function () {
+      if (this.readyState === 4 && this.status === 200) {
+        setFoto(this.responseText);
+      }
+    };
+
+    fotoXhttp.open(
+      "GET",
+      `http://148.202.152.33/cucei/fotoA.php?codigo=${codigo}`,
+      true
+    );
+    fotoXhttp.send();
+  }, [codigo]);
+
+  useEffect(() => {
+    if (!nip) return;
+    let datosXhttp = new XMLHttpRequest();
+    datosXhttp.open(
+      "GET",
+      `http://148.202.152.33/cucei/credenciales.php?codigo=${codigo}&nip=${nip}`,
+      true
+    );
+    datosXhttp.onreadystatechange = () => {
+      if (datosXhttp.readyState === XMLHttpRequest.DONE) {
+        const status = datosXhttp.status;
+        if (status === 0 || (status >= 200 && status < 400)) {
+          const datos = JSON.parse(datosXhttp.responseText);
+
+          setNombre(datos.nombre);
+          setCarrera(datos.carrera[0].descripcion);
+          setTipoUsuario(datos.tipoUsuario);
+          setEstatus(datos.estatus);
+        }
+      }
+    };
+
+    datosXhttp.send();
+  }, [foto]);
 
   return (
     <SafeAreaView>
-      <View style={{ alignItems: "center", margin: 10 }}>
+      <View style={{ alignItems: "center" }}>
+        <View
+          style={{
+            flexDirection: "row",
+            backgroundColor: "#1a2b62",
+            width: "100%",
+          }}
+        >
+          {foto && (
+            <Image source={{ uri: foto }} style={{ width: 125, height: 125 }} />
+          )}
+          <View
+            style={{
+              justifyContent: "space-around",
+              marginLeft: 5,
+              width: "100%",
+            }}
+          >
+            <Text style={{ color: "white", fontWeight: "bold" }}>
+              {carrera}
+            </Text>
+            <Text style={{ color: "white" }}>{nombre}</Text>
+            <Text style={{ color: "white" }}>{tipoUsuario}</Text>
+            <Text style={{ color: "white" }}>{estatus}</Text>
+          </View>
+        </View>
         {series && (
           <PieChart
-            widthAndHeight={250}
+            style={{ marginTop: 30 }}
+            widthAndHeight={125}
             series={series}
             sliceColor={sliceColor}
           />
@@ -49,11 +137,19 @@ const modulos = () => {
           data={materias}
           renderItem={({ item }) => {
             return (
-              <View style={{ borderWidth: 2, borderColor: "#1a2b62", padding: 5 }}>
-                <Text style={{color: "#1a2b62", fontWeight: "bold"}}>{item.descripcion}</Text>
-                <View style={{flexDirection: "row"}}>
-                  <Text style={{flex: 3, color: "#1a2b62"}}>Calificación: {item.calificacion}</Text>
-                  <Text style={{flex: 1, color: "#1a2b62"}}>Créditos: {item.creditos}</Text>
+              <View
+                style={{ borderWidth: 2, borderColor: "#1a2b62", padding: 5 }}
+              >
+                <Text style={{ color: "#1a2b62", fontWeight: "bold" }}>
+                  {item.descripcion}
+                </Text>
+                <View style={{ flexDirection: "row" }}>
+                  <Text style={{ flex: 3, color: "#1a2b62" }}>
+                    Calificación: {item.calificacion}
+                  </Text>
+                  <Text style={{ flex: 1, color: "#1a2b62" }}>
+                    Créditos: {item.creditos}
+                  </Text>
                 </View>
               </View>
             );

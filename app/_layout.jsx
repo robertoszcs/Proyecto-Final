@@ -7,6 +7,15 @@ const Layout = () => {
       <Stack.Screen name="home" options={{ headerShown: false }} />
       <Stack.Screen name="login" options={{ headerShown: false }} />
       <Stack.Screen
+        name="credentials"
+        options={{
+          title: "Iniciar Sesión",
+          headerStyle: { backgroundColor: "#1a2b62" },
+          headerTintColor: "white",
+          headerTitleStyle: { fontWeight: "bold", color: "white" },
+        }}
+      />
+      <Stack.Screen
         name="directorio"
         options={{
           title: "Directorio",
